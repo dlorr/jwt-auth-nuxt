@@ -26,22 +26,28 @@ export interface ResetPasswordPayload {
   verificationCode: string;
 }
 
-export interface UserResponse {
-  user: User;
+export type RegisterResponse = User;
+
+export interface LoginResponse {
+  message: string;
 }
 
 export interface MessageResponse {
   message: string;
 }
 
-export interface ApiError {
-  message: string;
-  errors?: Record<string, string[]>;
-}
+export type UserResponse = User;
+
+export type SessionsResponse = Session[];
 
 export interface Session {
   _id: string;
   userAgent?: string;
   createdAt: string;
   isCurrent?: boolean;
+}
+
+export interface ApiError {
+  message: string;
+  errors?: Record<string, string[]>;
 }

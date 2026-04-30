@@ -11,6 +11,10 @@ export default defineNuxtConfig({
     },
   },
 
+  devServer: {
+    port: parseInt(process.env.NUXT_PORT ?? "3005"),
+  },
+
   typescript: {
     strict: true,
     typeCheck: false,
@@ -50,4 +54,5 @@ export default defineNuxtConfig({
       },
     },
   },
+  compatibilityDate: "2026-04-29",
 });
