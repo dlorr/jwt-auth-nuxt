@@ -1,8 +1,13 @@
 <script setup lang="ts">
+import { useForm } from "vee-validate";
+import { resetPasswordFormSchema } from "~/utils/validation";
+
 definePageMeta({ middleware: ["guest"] });
 
 const route = useRoute();
 const { resetPassword } = useAuth();
+const { errorMessage, successMessage, setError, setSuccess, clearMessages } =
+  useFormError();
 
 const code = computed(() => (route.query.code as string) ?? "");
 const exp = computed(() => parseInt((route.query.exp as string) ?? "0"));
@@ -10,129 +15,153 @@ const exp = computed(() => parseInt((route.query.exp as string) ?? "0"));
 const isExpired = computed(() => exp.value > 0 && Date.now() > exp.value);
 const isInvalid = computed(() => !code.value || code.value.length !== 24);
 
-const password = ref("");
-const confirmPassword = ref("");
 const isLoading = ref(false);
-const successMessage = ref("");
-const errorMessage = ref("");
 
-async function handleSubmit() {
-  errorMessage.value = "";
-  successMessage.value = "";
+const { handleSubmit } = useForm({
+  validationSchema: resetPasswordFormSchema,
+});
+
+const onSubmit = handleSubmit(async (values) => {
+  clearMessages();
   isLoading.value = true;
 
   try {
     const message = await resetPassword({
-      password: password.value,
+      password: values.password,
       verificationCode: code.value,
     });
-    successMessage.value = message;
+    setSuccess(message);
     setTimeout(() => navigateTo("/login"), 2000);
-  } catch (err: unknown) {
-    errorMessage.value =
-      err instanceof Error
-        ? err.message
-        : "Failed to reset password. Please request a new link.";
+  } catch (err) {
+    setError(err);
   } finally {
     isLoading.value = false;
   }
-}
+});
 </script>
 
 <template>
-  <div class="reset-page">
-    <div class="reset-card">
-      <h1 class="reset-card__title">Reset password</h1>
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-card__header">
+        <div class="auth-card__logo">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <h1 class="auth-card__title">Reset password</h1>
+        <p class="auth-card__subtitle">Enter and confirm your new password.</p>
+      </div>
 
       <!-- Invalid / expired link -->
-      <div v-if="isInvalid || isExpired" class="reset-card__invalid">
-        <p>
-          {{
-            isExpired ? "This reset link has expired." : "Invalid reset link."
-          }}
-        </p>
-        <NuxtLink to="/forgot-password" class="btn btn--primary btn--full">
+      <div v-if="isInvalid || isExpired" class="auth-card__invalid">
+        <BaseAlert
+          :message="
+            isExpired ? 'This reset link has expired.' : 'Invalid reset link.'
+          "
+          type="error"
+        />
+        <NuxtLink to="/password/forgot" class="btn btn--primary btn--full">
           Request a new link
         </NuxtLink>
       </div>
 
       <!-- Reset form -->
-      <form v-else class="form" @submit.prevent="handleSubmit">
-        <div class="form__group">
-          <label class="form__label" for="password">New password</label>
-          <input
-            id="password"
-            v-model="password"
-            class="form__input"
-            type="password"
-            placeholder="Min 8 chars, upper, lower, number, special"
-            autocomplete="new-password"
-          />
-        </div>
+      <form v-else class="form" novalidate @submit.prevent="onSubmit">
+        <BaseInput
+          name="password"
+          label="New password"
+          type="password"
+          placeholder="Min 8 chars, upper, lower, number, special"
+          autocomplete="new-password"
+        />
 
-        <div class="form__group">
-          <label class="form__label" for="confirmPassword"
-            >Confirm new password</label
-          >
-          <input
-            id="confirmPassword"
-            v-model="confirmPassword"
-            class="form__input"
-            type="password"
-            placeholder="Repeat your new password"
-            autocomplete="new-password"
-          />
-        </div>
+        <BaseInput
+          name="confirmPassword"
+          label="Confirm new password"
+          type="password"
+          placeholder="Repeat your new password"
+          autocomplete="new-password"
+        />
 
-        <p v-if="errorMessage" class="form__error-global">{{ errorMessage }}</p>
-        <p v-if="successMessage" class="form__success">{{ successMessage }}</p>
+        <BaseAlert :message="errorMessage" type="error" />
+        <BaseAlert :message="successMessage" type="success" />
 
-        <button
-          type="submit"
-          class="btn btn--primary btn--full"
-          :class="{ 'btn--loading': isLoading }"
-          :disabled="isLoading"
-        >
-          <span class="btn__spinner" />
+        <BaseButton type="submit" :loading="isLoading" :full="true">
           {{ isLoading ? "Resetting…" : "Reset password" }}
-        </button>
+        </BaseButton>
       </form>
+
+      <p class="auth-card__footer">
+        <NuxtLink to="/login">← Back to sign in</NuxtLink>
+      </p>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.reset-page {
+.auth-page {
   @include auth-page;
 }
 
-.reset-card {
+.auth-card {
   @include auth-card;
+
+  &__header {
+    @include flex-col;
+    align-items: center;
+    text-align: center;
+    margin-bottom: $space-8;
+    gap: $space-2;
+  }
+
+  &__logo {
+    @include flex-center;
+    width: 52px;
+    height: 52px;
+    background: $color-primary-light;
+    color: $color-primary;
+    border-radius: $radius-xl;
+    margin-bottom: $space-2;
+  }
 
   &__title {
     font-size: $font-size-2xl;
     font-weight: $font-weight-semibold;
-    margin-bottom: $space-6;
-    text-align: center;
+    color: $text-primary;
+  }
+
+  &__subtitle {
+    font-size: $font-size-sm;
+    color: $text-muted;
   }
 
   &__invalid {
     @include flex-col;
     gap: $space-4;
-    text-align: center;
-    color: $text-secondary;
   }
-}
 
-.form__error-global {
-  font-size: $font-size-sm;
-  color: $color-danger;
-  text-align: center;
-}
+  &__footer {
+    text-align: center;
+    font-size: $font-size-sm;
+    color: $text-muted;
+    margin-top: $space-6;
 
-.form__success {
-  font-size: $font-size-sm;
-  color: $color-success;
-  text-align: center;
+    a {
+      font-weight: $font-weight-medium;
+      color: $color-primary;
+    }
+  }
 }
 </style>
