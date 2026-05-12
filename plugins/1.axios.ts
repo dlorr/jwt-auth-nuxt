@@ -31,9 +31,11 @@ export default defineNuxtPlugin(() => {
 
       const is401 = error.response?.status === 401;
       const alreadyRetried = originalRequest._retry === true;
-      const isRefreshCall = originalRequest.url?.includes("/auth/refresh");
+      const isAuthUrl = originalRequest.url?.includes("/auth/");
+      const isInvalidAccessToken =
+        error.response?.data?.errorCode === "InvalidAccessToken";
 
-      if (is401 && !alreadyRetried && !isRefreshCall) {
+      if (is401 && !alreadyRetried && !isAuthUrl && isInvalidAccessToken) {
         originalRequest._retry = true;
 
         try {
